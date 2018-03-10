@@ -20,7 +20,7 @@ indexed by parameters $\lambda$.
 
 In Edward, let \texttt{z} and \texttt{beta} be latent variables in the model,
 where we observe the random variable \texttt{x} with
-data \texttt{x_train}.
+data \texttt{x\_train}.
 Let \texttt{qz} and \texttt{qbeta} be random variables defined to
 approximate the posterior.
 We write this problem as follows:
@@ -34,7 +34,7 @@ first is a collection of latent random variables \texttt{beta} and
 \texttt{z}, along with ``posterior variables'' \texttt{qbeta} and
 \texttt{qz}, which are associated to their respective latent
 variables.  The second is a collection of observed random variables
-\texttt{x}, which is associated to the data \texttt{x_train}.
+\texttt{x}, which is associated to the data \texttt{x\_train}.
 
 Inference adjusts parameters of the distribution of \texttt{qbeta}
 and \texttt{qz} to be close to the
@@ -64,7 +64,7 @@ inference.finalize()
 
 \texttt{initialize()} builds the algorithm's update rules
 (computational graph) for $\lambda$;
-\texttt{tf.global_variables_initializer().run()} initializes $\lambda$
+\texttt{tf.global\_variables\_initializer().run()} initializes $\lambda$
 (TensorFlow variables in the graph);
 \texttt{update()} runs the graph once to update
 $\lambda$, which is called in a loop until convergence;
@@ -149,9 +149,38 @@ the latent variables; it uses samples from the prior.
 
 \begin{center}\rule{3in}{0.4pt}\end{center}
 
-{%sphinx
-
-.. autoclass:: edward.inferences.Inference
-   :members:
-
-%}
+\begin{itemize}
+  \item @{ed.inferences.Inference}
+  \item @{ed.inferences.VariationalInference}
+    \begin{itemize}
+    \item @{ed.inferences.KLqp}
+      \begin{itemize}
+      \item @{ed.inferences.ReparameterizationKLqp}
+      \item @{ed.inferences.ReparameterizationKLKLqp}
+      \item @{ed.inferences.ReparameterizationEntropyKLqp}
+      \item @{ed.inferences.ScoreKLqp}
+      \item @{ed.inferences.ScoreKLKLqp}
+      \item @{ed.inferences.ScoreEntropyKLqp}
+      \end{itemize}
+    \item @{ed.inferences.KLpq}
+    \item @{ed.inferences.GANInference}
+      \begin{itemize}
+      \item @{ed.inferences.BiGANInference}
+      \item @{ed.inferences.ImplicitKLqp}
+      \item @{ed.inferences.WGANInference}
+      \end{itemize}
+    \item @{ed.inferences.MAP}
+      \begin{itemize}
+      \item @{ed.inferences.Laplace}
+      \end{itemize}
+    \end{itemize}
+  \item @{ed.inferences.MonteCarlo}
+    \begin{itemize}
+    \item @{ed.inferences.Gibbs}
+    \item @{ed.inferences.MetropolisHastings}
+    \item @{ed.inferences.HMC}
+    \item @{ed.inferences.SGLD}
+    \item @{ed.inferences.SGHMC}
+    \end{itemize}
+  \item @{ed.inferences.complete_conditional}
+\end{itemize}

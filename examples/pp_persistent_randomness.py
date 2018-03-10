@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Persistent randomness.
 
 Our language defines random variables. They enable memoization in the
@@ -19,15 +18,18 @@ from edward.models import Categorical
 
 
 def eye_color(person):
-  random_variables = {x.name: x for x in
-                      tf.get_collection('_random_variable_collection_')}
+  random_variables = {x.name: x for x in ed.random_variables()}
   if person + '/' in random_variables:
     return random_variables[person + '/']
   else:
     return Categorical(probs=tf.ones(3) / 3, name=person)
 
 
-# Only two categorical random variables are created.
-eye_color('bob')
-eye_color('alice')
-eye_color('bob')
+def main(_):
+  # Only two categorical random variables are created.
+  eye_color('bob')
+  eye_color('alice')
+  eye_color('bob')
+
+if __name__ == "__main__":
+  tf.app.run()

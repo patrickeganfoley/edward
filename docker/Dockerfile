@@ -8,6 +8,7 @@ FROM ubuntu:14.04
 #################################################################################################################
 ENV CONDA_DIR /opt/conda
 ENV PATH $CONDA_DIR/bin:$PATH
+ENV LANG C.UTF-8
 
 #################################################################################################################
 #           Initial Setting
@@ -41,9 +42,9 @@ USER edward
 ARG python_version=3.5.3-0
 ARG python_qt_version=4
 RUN conda install -y python=${python_version} && \
-    pip install numpy six tensorflow keras prettytensor && \
+    pip install observations numpy six tensorflow keras prettytensor && \
     pip install ipdb pytest pytest-cov python-coveralls coverage==3.7.1 pytest-xdist pep8 pytest-pep8 pydot_ng && \
-    conda install Pillow scikit-learn notebook pandas matplotlib seaborn pyyaml h5py && \
+    conda install Pillow scikit-learn matplotlib notebook pandas seaborn pyyaml h5py && \
     conda install -y pyqt=${python_qt_version} && \
     pip install edward && \
     conda clean -yt
@@ -58,4 +59,3 @@ WORKDIR /src
 EXPOSE 8888
 
 CMD jupyter notebook --port=8888 --ip=0.0.0.0
-

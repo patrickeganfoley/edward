@@ -4,17 +4,12 @@
 
 \subsubsection{Basic Installation}
 
-\textbf{Note:
-TensorFlow 1.1.0 and 1.2.0 both made breaking API changes.
-Edward's latest stable version requires exactly TensorFlow 1.1.0.
-}
-
 Edward depends on
 
 \begin{itemize}
   \item NumPy (>=1.7)
   \item Six (>=1.1.0)
-  \item TensorFlow (==1.1.0)
+  \item TensorFlow (>=1.2.0rc0)
 \end{itemize}
 
 Installing \texttt{edward} by default also installs \texttt{numpy} and
@@ -43,17 +38,27 @@ for details, including how to set up NVIDIA software for TensorFlow with GPUs.
 Edward has optional features that depend on external packages.
 
 \begin{itemize}
-  \item Neural networks are supported through three libraries:
+  \item Any examples using real data sets typically require
+  \href{https://github.com/edwardlib/observations/}{Observations} (>=0.1.2)
+\begin{lstlisting}[language=JSON]
+pip install observations
+\end{lstlisting}
+Observations lets you load an extensive collection of data sets with
+minimal effort under a one-line interface. Observations was originally
+developed for Edward and it has since become a standalone library for
+general machine learning.
+  \item Neural networks are supported through any library operating
+    on TensorFlow. For example:
+  \texttt{tf.layers},
   \href{http://keras.io}{Keras} (>=1.0)
 \begin{lstlisting}[language=JSON]
-pip install keras
+pip install keras==2.0.4
 \end{lstlisting}
+  and
   \href{https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim}{TensorFlow Slim}
-  (native in TensorFlow), and
-  \href{https://github.com/google/prettytensor}{PrettyTensor} (>=0.7.4)
-\begin{lstlisting}[language=JSON]
-pip install prettytensor
-\end{lstlisting}
+  (native in TensorFlow).
+
+Note that for Keras 2.0.5 and beyond, all neural net layer transformations cannot be directly applied on random variables anymore. For example, if \texttt{x} is a \texttt{ed.RandomVariable} object, one must call \texttt{tf.convert\_to\_tensor} before applying it to a layer transformation, \texttt{Dense(256)(tf.convert\_to\_tensor(x))}.  See \href{https://github.com/fchollet/keras/issues/6979}{here} for more details.
   \item Notebooks require
   \href{http://jupyter.org}{Jupyter} (>=1.0.0)
 \begin{lstlisting}[language=JSON]

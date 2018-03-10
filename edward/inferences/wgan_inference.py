@@ -8,50 +8,50 @@ import tensorflow as tf
 from edward.inferences.gan_inference import GANInference
 from edward.util import get_session
 
-try:
-  from edward.models import Uniform
-except Exception as e:
-  raise ImportError("{0}. Your TensorFlow version is not supported.".format(e))
-
 
 class WGANInference(GANInference):
-  """Parameter estimation with GAN-style training (Goodfellow et al.,
-  2014), using the Wasserstein distance (Arjovsky et al., 2017).
+  """Parameter estimation with GAN-style training
+  [@goodfellow2014generative], using the Wasserstein distance
+  [@arjovsky2017wasserstein].
 
   Works for the class of implicit (and differentiable) probabilistic
   models. These models do not require a tractable density and assume
   only a program that generates samples.
+
+  #### Notes
+
+  Argument-wise, the only difference from `GANInference` is
+  conceptual: the `discriminator` is better described as a test
+  function or critic. `WGANInference` continues to use
+  `discriminator` only to share methods and attributes with
+  `GANInference`.
+
+  The objective function also adds to itself a summation over all
+  tensors in the `REGULARIZATION_LOSSES` collection.
+
+  #### Examples
+
+  ```python
+  z = Normal(loc=tf.zeros([100, 10]), scale=tf.ones([100, 10]))
+  x = generative_network(z)
+
+  inference = ed.WGANInference({x: x_data}, discriminator)
+  ```
   """
   def __init__(self, *args, **kwargs):
-    """
-    Examples
-    --------
-    >>> z = Normal(loc=tf.zeros([100, 10]), scale=tf.ones([100, 10]))
-    >>> x = generative_network(z)
-    >>>
-    >>> inference = ed.WGANInference({x: x_data}, discriminator)
-
-    Notes
-    -----
-    Argument-wise, the only difference from ``GANInference`` is
-    conceptual: the ``discriminator`` is better described as a test
-    function or critic. ``WGANInference`` continues to use
-    ``discriminator`` only to share methods and attributes with
-    ``GANInference``.
-    """
     super(WGANInference, self).__init__(*args, **kwargs)
 
   def initialize(self, penalty=10.0, clip=None, *args, **kwargs):
-    """Initialize Wasserstein GAN inference.
+    """Initialize inference algorithm. It initializes hyperparameters
+    and builds ops for the algorithm's computation graph.
 
-    Parameters
-    ----------
-    penalty : float, optional
-      Scalar value to enforce gradient penalty that ensures the
-      gradients have norm equal to 1 (Gulrajani et al., 2017). Set to
-      None (or 0.0) if using no penalty.
-    clip : float, optional
-      Value to clip weights by. Default is no clipping.
+    Args:
+      penalty: float.
+        Scalar value to enforce gradient penalty that ensures the
+        gradients have norm equal to 1 [@gulrajani2017improved]. Set to
+        None (or 0.0) if using no penalty.
+      clip: float.
+        Value to clip weights by. Default is no clipping.
     """
     self.penalty = penalty
 
@@ -76,9 +76,7 @@ class WGANInference(GANInference):
     if self.penalty is None or self.penalty == 0:
       penalty = 0.0
     else:
-      eps = Uniform().sample(x_true.shape[0])
-      while eps.shape.ndims < x_true.shape.ndims:
-        eps = tf.expand_dims(eps, -1)
+      eps = tf.random_uniform(tf.shape(x_true))
       x_interpolated = eps * x_true + (1.0 - eps) * x_fake
       with tf.variable_scope("Disc", reuse=True):
         d_interpolated = self.discriminator(x_interpolated)
@@ -88,10 +86,14 @@ class WGANInference(GANInference):
                                      list(range(1, gradients.shape.ndims))))
       penalty = self.penalty * tf.reduce_mean(tf.square(slopes - 1.0))
 
+    reg_terms_d = tf.losses.get_regularization_losses(scope="Disc")
+    reg_terms_all = tf.losses.get_regularization_losses()
+    reg_terms = [r for r in reg_terms_all if r not in reg_terms_d]
+
     mean_true = tf.reduce_mean(d_true)
     mean_fake = tf.reduce_mean(d_fake)
-    loss_d = mean_fake - mean_true + penalty
-    loss = -mean_fake
+    loss_d = mean_fake - mean_true + penalty + tf.reduce_sum(reg_terms_d)
+    loss = -mean_fake + tf.reduce_sum(reg_terms)
 
     var_list_d = tf.get_collection(
         tf.GraphKeys.TRAINABLE_VARIABLES, scope="Disc")

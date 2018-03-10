@@ -14,24 +14,32 @@ An interactive version with Jupyter notebook is available
 
 We use the \texttt{InstEval} data set from the popular
 \href{http://lme4.r-forge.r-project.org}{lme4 R package}
-\citep{bates2015fitting}, located
-\href{https://github.com/blei-lab/edward/blob/master/examples/data/insteval.csv}{here}.
+\citep{bates2015fitting}.
 It is a data set of instructor evaluation ratings, where the inputs
 (covariates) include categories such as \texttt{students} and
 \texttt{departments}, and our response variable of interest is the
 instructor evaluation rating.
 
 \begin{lstlisting}[language=Python]
-data = pd.read_csv('../examples/data/insteval.csv')
+import pandas as pd
+from observations import insteval
+
+data, metadata = insteval("~/data")
+data = pd.DataFrame(data, columns=metadata['columns'])
+
+# s - students - 1:2972
+# d - instructors - codes that need to be remapped
+# dept also needs to be remapped
+data['s'] = data['s'] - 1
 data['dcodes'] = data['d'].astype('category').cat.codes
 data['deptcodes'] = data['dept'].astype('category').cat.codes
-data['s'] = data['s'] - 1
+data['y'] = data['y'].values.astype(float)
 
 train = data.sample(frac=0.8)
 test = data.drop(train.index)
 \end{lstlisting}
 
-In the code, we denote:
+The data set denotes:
 \begin{itemize}
 \item \texttt{students} as \texttt{s}
 \item \texttt{instructors} as \texttt{d}
@@ -40,10 +48,38 @@ In the code, we denote:
 \end{itemize}
 
 \begin{lstlisting}[language=Python]
-n_s = 2972  # number of students
-n_d = 1128  # number of instructors
-n_dept = 14  # number of departments
+s_train = train['s'].values
+d_train = train['dcodes'].values
+dept_train = train['deptcodes'].values
+y_train = train['y'].values
+service_train = train['service'].values
+n_obs_train = train.shape[0]
+
+s_test = test['s'].values
+d_test = test['dcodes'].values
+dept_test = test['deptcodes'].values
+y_test = test['y'].values
+service_test = test['service'].values
+n_obs_test = test.shape[0]
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python]
+n_s = max(s_train) + 1  # number of students
+n_d = max(d_train) + 1  # number of instructors
+n_dept = max(dept_train) + 1  # number of departments
 n_obs = train.shape[0]  # number of observations
+
+print("Number of students: {}".format(n_s))
+print("Number of instructors: {}".format(n_d))
+print("Number of departments: {}".format(n_dept))
+print("Number of observations: {}".format(n_obs))
+\end{lstlisting}
+
+\begin{lstlisting}
+Number of students: 2972
+Number of instructors: 1128
+Number of departments: 14
+Number of observations: 58737
 \end{lstlisting}
 
 \subsubsection{Model}
@@ -128,22 +164,22 @@ dept_ph = tf.placeholder(tf.int32, [None])
 service_ph = tf.placeholder(tf.float32, [None])
 
 # Set up fixed effects.
-mu = tf.Variable(tf.random_normal([]))
-service = tf.Variable(tf.random_normal([]))
+mu = tf.get_variable("mu", [])
+service = tf.get_variable("service", [])
 
-sigma_s = tf.sqrt(tf.exp(tf.Variable(tf.random_normal([]))))
-sigma_d = tf.sqrt(tf.exp(tf.Variable(tf.random_normal([]))))
-sigma_dept = tf.sqrt(tf.exp(tf.Variable(tf.random_normal([]))))
+sigma_s = tf.sqrt(tf.exp(tf.get_variable("sigma_s", [])))
+sigma_d = tf.sqrt(tf.exp(tf.get_variable("sigma_d", [])))
+sigma_dept = tf.sqrt(tf.exp(tf.get_variable("sigma_dept", [])))
 
 # Set up random effects.
 eta_s = Normal(loc=tf.zeros(n_s), scale=sigma_s * tf.ones(n_s))
 eta_d = Normal(loc=tf.zeros(n_d), scale=sigma_d * tf.ones(n_d))
 eta_dept = Normal(loc=tf.zeros(n_dept), scale=sigma_dept * tf.ones(n_dept))
 
-yhat = tf.gather(eta_s, s_ph) + \
-    tf.gather(eta_d, d_ph) + \
-    tf.gather(eta_dept, dept_ph) + \
-    mu + service * service_ph
+yhat = (tf.gather(eta_s, s_ph) +
+        tf.gather(eta_d, d_ph) +
+        tf.gather(eta_dept, dept_ph) +
+        mu + service * service_ph)
 y = Normal(loc=yhat, scale=tf.ones(n_obs))
 \end{lstlisting}
 
@@ -158,14 +194,14 @@ estimated under a variational EM scheme.
 
 \begin{lstlisting}[language=Python]
 q_eta_s = Normal(
-    loc=tf.Variable(tf.random_normal([n_s])),
-    scale=tf.nn.softplus(tf.Variable(tf.random_normal([n_s]))))
+    loc=tf.get_variable("q_eta_s/loc", [n_s]),
+    scale=tf.nn.softplus(tf.get_variable("q_eta_s/scale", [n_s])))
 q_eta_d = Normal(
-    loc=tf.Variable(tf.random_normal([n_d])),
-    scale=tf.nn.softplus(tf.Variable(tf.random_normal([n_d]))))
+    loc=tf.get_variable("q_eta_d/loc", [n_d]),
+    scale=tf.nn.softplus(tf.get_variable("q_eta_d/scale", [n_d])))
 q_eta_dept = Normal(
-    loc=tf.Variable(tf.random_normal([n_dept])),
-    scale=tf.nn.softplus(tf.Variable(tf.random_normal([n_dept]))))
+    loc=tf.get_variable("q_eta_dept/loc", [n_dept]),
+    scale=tf.nn.softplus(tf.get_variable("q_eta_dept/scale", [n_dept])))
 
 latent_vars = {
     eta_s: q_eta_s,
@@ -251,9 +287,9 @@ We can also compare our learned parameters to those estimated by R's
 `lme4`.
 
 \begin{lstlisting}[language=Python]
-student_effects_lme4 = pd.read_csv('../examples/data/insteval_student_ranefs_r.csv')
-instructor_effects_lme4 = pd.read_csv('../examples/data/insteval_instructor_ranefs_r.csv')
-dept_effects_lme4 = pd.read_csv('../examples/data/insteval_dept_ranefs_r.csv')
+student_effects_lme4 = pd.read_csv('data/insteval_student_ranefs_r.csv')
+instructor_effects_lme4 = pd.read_csv('data/insteval_instructor_ranefs_r.csv')
+dept_effects_lme4 = pd.read_csv('data/insteval_dept_ranefs_r.csv')
 
 student_effects_edward = q_eta_s.mean().eval()
 instructor_effects_edward = q_eta_d.mean().eval()
@@ -268,7 +304,7 @@ plt.xlabel("Student Effects from lme4")
 plt.ylabel("Student Effects from edward")
 plt.scatter(student_effects_lme4["(Intercept)"],
             student_effects_edward,
-            alpha = 0.25)
+            alpha=0.25)
 plt.show()
 \end{lstlisting}
 
@@ -282,7 +318,7 @@ plt.xlabel("Instructor Effects from lme4")
 plt.ylabel("Instructor Effects from edward")
 plt.scatter(instructor_effects_lme4["(Intercept)"],
             instructor_effects_edward,
-            alpha = 0.25)
+            alpha=0.25)
 plt.show()
 \end{lstlisting}
 
@@ -308,7 +344,7 @@ plt.xlabel("Department Effects from lme4")
 plt.ylabel("Department Effects from edward")
 plt.scatter(dept_effects_and_intercept_lme4,
             dept_effects_and_intercept_edward,
-            s = 0.01*train.dept.value_counts())
+            s=0.01 * train.dept.value_counts())
 plt.show()
 \end{lstlisting}
 
